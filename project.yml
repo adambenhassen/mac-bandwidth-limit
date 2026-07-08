@@ -1,0 +1,104 @@
+name: BandwidthLimit
+options:
+  bundleIdPrefix: com.local
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    # Ad-hoc / local dev signing — no team, no provisioning profile.
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+    PROVISIONING_PROFILE_SPECIFIER: ""
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_HARDENED_RUNTIME: YES
+
+targets:
+  BandwidthLimit:
+    type: application
+    platform: macOS
+    sources:
+      - App
+      - Shared
+      - path: Helper/com.local.bandwidthlimit.helper.plist
+        buildPhase:
+          copyFiles:
+            destination: wrapper
+            subpath: Contents/Library/LaunchDaemons
+    entitlements:
+      path: App/BandwidthLimit.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+        com.apple.security.application-groups:
+          - group.com.local.bandwidthlimit
+        com.apple.developer.networking.networkextension:
+          - app-proxy-provider-systemextension
+        com.apple.developer.system-extension.install: true
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleName: BandwidthLimit
+        CFBundlePackageType: APPL
+        LSUIElement: true
+        LSMinimumSystemVersion: "13.0"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.local.bandwidthlimit
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - target: BandwidthLimitProxy
+        embed: true
+      - target: BandwidthLimitHelper
+        embed: true
+        copy:
+          destination: executables
+
+  BandwidthLimitProxy:
+    type: system-extension
+    platform: macOS
+    sources:
+      - PacketTunnel
+      - Shared
+    entitlements:
+      path: PacketTunnel/BandwidthLimitProxy.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+        com.apple.security.application-groups:
+          - group.com.local.bandwidthlimit
+        com.apple.developer.networking.networkextension:
+          - app-proxy-provider-systemextension
+    info:
+      path: PacketTunnel/Info.plist
+      properties:
+        CFBundleDisplayName: BandwidthLimit Proxy
+        NSSystemExtensionUsageDescription: Throttles per-app network bandwidth.
+        NetworkExtension:
+          NEMachServiceName: com.local.bandwidthlimit.proxy
+          NEProviderClasses:
+            com.apple.networkextension.app-proxy: BandwidthLimitProxy.Provider
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.local.bandwidthlimit.proxy
+
+  BandwidthLimitHelper:
+    type: tool
+    platform: macOS
+    sources:
+      - Helper
+      - path: Shared/HelperProtocol.swift
+    entitlements:
+      path: Helper/BandwidthLimitHelper.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+    info:
+      path: Helper/Info.plist
+      properties:
+        CFBundleIdentifier: com.local.bandwidthlimit.helper
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.local.bandwidthlimit.helper
+        PRODUCT_NAME: com.local.bandwidthlimit.helper

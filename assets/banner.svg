@@ -1,0 +1,59 @@
+<svg width="100%" viewBox="0 0 1280 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BandwidthLimit — Cap your whole connection, or throttle one app at a time.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0A84FF"/>
+      <stop offset="1" stop-color="#5E5CE6"/>
+    </linearGradient>
+    <radialGradient id="vignette" cx="0.42" cy="0.45" r="0.9">
+      <stop offset="0.55" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.16"/>
+    </radialGradient>
+    <linearGradient id="tile" x1="110" y1="110" x2="250" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.12"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="360" fill="url(#bg)"/>
+
+  <!-- Faint concentric gauge-arc motif, lower right -->
+  <g fill="none" stroke="#FFFFFF" stroke-opacity="0.055" stroke-width="2">
+    <circle cx="1330" cy="440" r="200"/>
+    <circle cx="1330" cy="440" r="280"/>
+    <circle cx="1330" cy="440" r="360"/>
+    <circle cx="1330" cy="440" r="440"/>
+  </g>
+
+  <!-- Subtle vignette -->
+  <rect width="1280" height="360" fill="url(#vignette)"/>
+
+  <!-- App icon tile -->
+  <rect x="110" y="110" width="140" height="140" rx="32" fill="url(#tile)" stroke="#FFFFFF" stroke-opacity="0.35" stroke-width="1.5"/>
+
+  <!-- Speedometer glyph -->
+  <g>
+    <!-- Dial track (remainder, translucent) -->
+    <path d="M 211.11 164.89 A 44 44 0 0 1 224 196" fill="none" stroke="#FFFFFF" stroke-opacity="0.38" stroke-width="7" stroke-linecap="round"/>
+    <!-- Dial progress (solid) -->
+    <path d="M 136 196 A 44 44 0 0 1 211.11 164.89" fill="none" stroke="#FFFFFF" stroke-width="7" stroke-linecap="round"/>
+    <!-- Tick dots -->
+    <g fill="#FFFFFF">
+      <circle cx="148" cy="196" r="2.6"/>
+      <circle cx="157.4" cy="173.4" r="2.6"/>
+      <circle cx="180" cy="164" r="2.6"/>
+      <circle cx="202.6" cy="173.4" r="2.6"/>
+      <circle cx="212" cy="196" r="2.6" fill-opacity="0.5"/>
+    </g>
+    <!-- Needle -->
+    <line x1="180" y1="196" x2="200.5" y2="175.5" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
+    <!-- Hub -->
+    <circle cx="180" cy="196" r="6.5" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Wordmark -->
+  <g font-family="-apple-system, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" fill="#FFFFFF">
+    <text x="298" y="180" font-size="62" font-weight="700" letter-spacing="-0.5">BandwidthLimit</text>
+    <text x="300" y="226" font-size="24" font-weight="400" fill-opacity="0.88" letter-spacing="0.2">Cap your whole connection — or throttle one app at a time.</text>
+  </g>
+</svg>
