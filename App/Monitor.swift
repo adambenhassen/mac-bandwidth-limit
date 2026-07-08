@@ -26,14 +26,32 @@ enum Monitor {
         p.waitUntilExit()
         guard p.terminationStatus == 0 else { return [] }
         let out = String(data: data, encoding: .utf8) ?? ""
-        let rates = parse(out, seconds: seconds)
-        return rates.map {
+        return aggregate(parse(out, seconds: seconds))
+    }
+
+    /// Collapse per-process rates into one row per app: every process resolving to the same app
+    /// (bundle id) is summed, so an app's many helper processes show as one complete row instead of
+    /// overwriting each other. Unresolved processes group by name (so e.g. all `ssh` sum, not clobber).
+    static func aggregate(_ rates: [Rate]) -> [AppUsage] {
+        var groups: [String: (name: String, bid: String?, isTunnel: Bool, down: Double, up: Double)] = [:]
+        for r in rates {
             // Resolve via PID → parent app so helper processes map to their app; fall back to name.
-            let info = AppIdentity.resolve(pid: $0.pid)
-            let bid = info?.bundleID ?? BundleResolver.bundleID(forProcessName: $0.name)
-            return AppUsage(name: $0.name, bundleID: bid, isTunnel: info?.isExtension ?? false,
-                            mbpsDown: $0.mbpsDown, mbpsUp: $0.mbpsUp)
+            let info = AppIdentity.resolve(pid: r.pid)
+            let bid = info?.bundleID ?? BundleResolver.bundleID(forProcessName: r.name)
+            let key = bid ?? r.name
+            var g = groups[key] ?? (info?.name ?? r.name, bid, false, 0, 0)
+            g.down += r.mbpsDown
+            g.up += r.mbpsUp
+            g.isTunnel = g.isTunnel || (info?.isExtension ?? false)
+            if let appName = info?.name { g.name = appName }   // prefer the resolved app name
+            groups[key] = g
         }
+        return groups.values
+            .map { AppUsage(name: $0.name, bundleID: $0.bid, isTunnel: $0.isTunnel,
+                            mbpsDown: $0.down, mbpsUp: $0.up) }
+            // Low floor (~250 B/s) so light streamers like CLIs show; noise below that is dropped.
+            .filter { $0.mbpsDown + $0.mbpsUp > 0.002 }
+            .sorted { ($0.mbpsDown + $0.mbpsUp) > ($1.mbpsDown + $1.mbpsUp) }
     }
 
     struct Rate { let name: String; let pid: pid_t; let mbpsDown: Double; let mbpsUp: Double }
@@ -43,9 +61,11 @@ enum Monitor {
     /// Row shape: `HH:MM:SS.micros  <proc name>.<pid>  <bytes_in>  <bytes_out>` (space-columned;
     /// process name may contain spaces). Header/`bytes_in` lines and IP-only rows are ignored.
     static func parse(_ output: String, seconds: Int) -> [Rate] {
-        // name -> (bytesIn, bytesOut, pid); keyed by name so the two sample blocks align per process.
-        var blocks: [[String: (Double, Double, pid_t)]] = []
-        var current: [String: (Double, Double, pid_t)] = [:]
+        // Keyed by the full "name.pid" identifier so distinct processes (incl. same-named ones like
+        // many `node`/`ssh`) stay separate and the two sample blocks align per process.
+        struct Cell { let bin: Double; let bout: Double; let name: String; let pid: pid_t }
+        var blocks: [[String: Cell]] = []
+        var current: [String: Cell] = [:]
         for raw in output.split(separator: "\n", omittingEmptySubsequences: true) {
             let line = String(raw)
             if line.contains("bytes_in") && line.contains("bytes_out") { // header => new block
@@ -62,18 +82,18 @@ enum Monitor {
             let name = String(identifier[..<dot])
             if name.isEmpty || name.range(of: #"^[0-9.]+$"#, options: .regularExpression) != nil { continue }
             let pid = pid_t(identifier[identifier.index(after: dot)...]) ?? 0
-            current[name] = (bin, bout, pid)
+            current[identifier] = Cell(bin: bin, bout: bout, name: name, pid: pid)
         }
         if !current.isEmpty { blocks.append(current) }
         guard let last = blocks.last else { return [] }
         let prev = blocks.count >= 2 ? blocks[blocks.count - 2] : [:]
         let dt = Double(max(seconds, 1))
         var out: [Rate] = []
-        for (name, cur) in last {
-            let base = prev[name] ?? (0, 0, cur.2)
-            let dIn = max(0, cur.0 - base.0), dOut = max(0, cur.1 - base.1)
+        for (id, cur) in last {
+            let base = prev[id]
+            let dIn = max(0, cur.bin - (base?.bin ?? cur.bin)), dOut = max(0, cur.bout - (base?.bout ?? cur.bout))
             let down = dIn * 8 / 1_000_000 / dt, up = dOut * 8 / 1_000_000 / dt
-            if down + up > 0.01 { out.append(Rate(name: name, pid: cur.2, mbpsDown: down, mbpsUp: up)) }
+            if down + up > 0 { out.append(Rate(name: cur.name, pid: cur.pid, mbpsDown: down, mbpsUp: up)) }
         }
         return out.sorted { ($0.mbpsDown + $0.mbpsUp) > ($1.mbpsDown + $1.mbpsUp) }
     }

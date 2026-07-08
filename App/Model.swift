@@ -58,14 +58,17 @@ final class AppModel: ObservableObject {
         enabled = ProxyControl.shared.isRunning
         loginEnabled = SMAppService.mainApp.status == .enabled
         tick()
-        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.tick() }
+        // 1s cadence with a 2s sample window: the guard skips overlaps, so sampling runs nearly
+        // continuously and averages over ~2s — this catches bursty/light traffic that a 1s snapshot
+        // every 2s would miss.
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.tick() }
     }
 
     private func tick() {
         if sampling { return }
         sampling = true
         DispatchQueue.global().async { [weak self] in
-            let usage = Monitor.sample(seconds: 1)
+            let usage = Monitor.sample(seconds: 2)
             DispatchQueue.main.async { self?.ingest(usage) }
         }
     }
