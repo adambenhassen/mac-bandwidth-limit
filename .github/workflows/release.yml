@@ -11,7 +11,7 @@ jobs:
   release:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: maxim-lobanov/setup-xcode@v1
         with:
@@ -35,7 +35,7 @@ jobs:
           ditto -c -k --keepParent "$APP" "BandwidthLimit-${GITHUB_REF_NAME}-universal.zip"
 
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: BandwidthLimit-*-universal.zip
           generate_release_notes: true
